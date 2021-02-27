@@ -23,12 +23,13 @@ class FlowMeter(object):
     # objects and the refcounts
     open_ports = {}
 
-    def __init__(self, port='/dev/ttyUSB0', address='A'):
+    def __init__(self, port='/dev/ttyUSB0', address='A', serial_kwargs=None):
         """Connect this driver with the appropriate USB / serial port.
 
         Args:
             port: The serial port. Default '/dev/ttyUSB0'.
             address: The Alicat-specified address, A-Z. Default 'A'.
+            serial_kwargs: dict of keyword arguments passed to serial.Serial
         """
         self.address = address
         self.port = port
@@ -37,7 +38,12 @@ class FlowMeter(object):
             self.connection, refcount = FlowMeter.open_ports[port]
             FlowMeter.open_ports[port] = (self.connection, refcount + 1)
         else:
-            self.connection = serial.Serial(port, 19200, timeout=1.0)
+            if serial_kwargs is None:
+                serial_kwargs = dict()
+
+            self.connection = serial.Serial(port, 19200, timeout=1.0,
+                **serial_kwargs
+            )
             FlowMeter.open_ports[port] = (self.connection, 1)
 
         self.keys = ['pressure', 'temperature', 'volumetric_flow', 'mass_flow',
@@ -224,14 +230,14 @@ class FlowController(FlowMeter):
 
     registers = {'flow': 0b00100101, 'pressure': 0b00100010}
 
-    def __init__(self, port='/dev/ttyUSB0', address='A'):
+    def __init__(self, port='/dev/ttyUSB0', address='A', **kwargs):
         """Connect this driver with the appropriate USB / serial port.
 
         Args:
             port: The serial port. Default '/dev/ttyUSB0'.
             address: The Alicat-specified address, A-Z. Default 'A'.
         """
-        FlowMeter.__init__(self, port, address)
+        FlowMeter.__init__(self, port, address, **kwargs)
         try:
             self.control_point = self._get_control_point()
         except Exception:
